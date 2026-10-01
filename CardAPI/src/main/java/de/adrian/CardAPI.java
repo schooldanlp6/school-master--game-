@@ -7,6 +7,7 @@ import de.adrian.interfaces.CardMeta;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class CardAPI {
 
@@ -18,6 +19,9 @@ public class CardAPI {
     }
     public CardMeta getMeta(Identifier identifier) {
         return cardMetas.getOrDefault(identifier,null);
+    }
+    public Set<Identifier> getMetaIdentifiers() {
+        return cardMetas.keySet();
     }
 
 

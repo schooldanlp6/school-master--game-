@@ -5,7 +5,7 @@ import com.google.gson.JsonParser;
 
 import java.io.*;
 
-public class Test {
+public class App{
 
     private static final File file = new File("test.json");
 
