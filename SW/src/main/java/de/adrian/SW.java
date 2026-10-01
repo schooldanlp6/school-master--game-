@@ -27,7 +27,6 @@ public class SW {
         parseCardMetas(cardMetas);
     }
     private void parseCardMetas(JsonElement cardMetas) {
-        System.out.println("Parsing CardMetas...");
         if (cardMetas == null || !cardMetas.isJsonObject() || cardMetas.getAsJsonObject().isEmpty()) throw new NullPointerException("CardMeta file is empty or corrupted!");
         this.cardMetas = CardParser.parse(cardMetas.getAsJsonObject(),this);
         System.out.println("Successfully parsed " + this.cardMetas.size() + " CardMetas!");
