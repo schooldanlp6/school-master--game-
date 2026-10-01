@@ -11,7 +11,7 @@ public class Test {
 
     public static void main(String[] args) {
         createJsonIfNotExist();
-        new SW(readFile());
+        new CardAPI(readFile());
     }
 
     private static void createJsonIfNotExist() {

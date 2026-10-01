@@ -1,7 +1,6 @@
 package de.adrian;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import de.adrian.cardparser.CardParser;
 import de.adrian.utils.Identifier;
 import de.adrian.interfaces.CardMeta;
@@ -9,7 +8,7 @@ import de.adrian.interfaces.CardMeta;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SW {
+public class CardAPI {
 
     private final Map<String, Identifier> identifierMap = new HashMap<>();
     private Map<Identifier, CardMeta> cardMetas;
@@ -23,7 +22,7 @@ public class SW {
 
 
 
-    public SW(JsonElement cardMetas) {
+    public CardAPI(JsonElement cardMetas) {
         parseCardMetas(cardMetas);
     }
     private void parseCardMetas(JsonElement cardMetas) {
