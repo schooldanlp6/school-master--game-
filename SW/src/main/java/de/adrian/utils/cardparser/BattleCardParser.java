@@ -7,7 +7,7 @@ import de.adrian.utils.interfaces.CardMeta;
 import java.util.EnumMap;
 import java.util.Map;
 
-public class BattleCardParser implements CardSupPartParser {
+class BattleCardParser implements CardSupPartParser {
     @Override
     public CardMeta parse(CardTemplate template) {
         if (!template.getData().has("stats") || !template.getData().get("stats").isJsonObject()) return null;
