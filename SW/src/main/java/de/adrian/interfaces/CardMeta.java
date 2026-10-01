@@ -1,4 +1,4 @@
-package de.adrian.utils.interfaces;
+package de.adrian.interfaces;
 
 import com.google.gson.JsonObject;
 import de.adrian.utils.Identifier;

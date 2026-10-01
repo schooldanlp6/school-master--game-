@@ -1,8 +1,8 @@
-package de.adrian.utils.cardparser;
+package de.adrian.cardparser;
 
 import com.google.gson.JsonObject;
 import de.adrian.utils.Stat;
-import de.adrian.utils.interfaces.CardMeta;
+import de.adrian.interfaces.CardMeta;
 
 import java.util.EnumMap;
 import java.util.Map;

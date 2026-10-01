@@ -1,10 +1,10 @@
-package de.adrian.utils.cardparser;
+package de.adrian.cardparser;
 
 import com.google.gson.JsonObject;
 import de.adrian.utils.Identifier;
 import de.adrian.utils.Rarity;
 import de.adrian.utils.Stat;
-import de.adrian.utils.interfaces.BattleCardMeta;
+import de.adrian.interfaces.BattleCardMeta;
 
 import java.util.Map;
 
