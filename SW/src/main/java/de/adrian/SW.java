@@ -31,5 +31,18 @@ public class SW {
         if (cardMetas == null || !cardMetas.isJsonObject() || cardMetas.getAsJsonObject().isEmpty()) throw new NullPointerException("CardMeta file is empty or corrupted!");
         this.cardMetas = CardParser.parse(cardMetas.getAsJsonObject(),this);
         System.out.println("Successfully parsed " + this.cardMetas.size() + " CardMetas!");
+
+        for (var entry : parseCardMetaTypes().entrySet()) System.out.println("  EntryType: " + entry.getKey().getSimpleName() + " | Amount: " + entry.getValue());
+    }
+    private Map<Class<? extends CardMeta>, Integer> parseCardMetaTypes() {
+        Map<Class<? extends CardMeta>, Integer> typeAmount = new HashMap<>();
+
+        for (CardMeta meta : cardMetas.values()) {
+            if (meta == null) continue;
+            Class<? extends CardMeta> clazz = meta.getClass();
+            typeAmount.put(clazz, typeAmount.getOrDefault(clazz, 0) + 1);
+        }
+
+        return typeAmount;
     }
 }
