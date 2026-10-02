@@ -37,4 +37,9 @@ record EquipmentCardTemplate(CardTemplate template, Set<StatModifierValue> getMo
     public JsonObject getData() {
         return template.getData();
     }
+
+    @Override
+    public String toString() {
+        return template.toString();
+    }
 }

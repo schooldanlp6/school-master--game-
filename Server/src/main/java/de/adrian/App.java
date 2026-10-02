@@ -1,33 +1,17 @@
 package de.adrian;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
+import de.adrian.cardapi.CardInitiator;
 
 import java.io.*;
 
 public class App{
 
-    private static final File file = new File("test.json");
+    public static final File folder = new File("data");
+    public static CardAPI api;
 
     public static void main(String[] args) {
-        createJsonIfNotExist();
-        new CardAPI(readFile());
-    }
-
-    private static void createJsonIfNotExist() {
-        try {
-            if (!file.exists()) file.createNewFile();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    private static JsonElement readFile() {
-        if (!file.exists()) return null;
-        try (FileReader reader = new FileReader(file)) {
-            return JsonParser.parseReader(reader);
-        } catch (Exception e) {
-            return null;
-        }
+        if (!folder.exists()) folder.mkdir();
+        api = CardInitiator.init();
     }
 
 }

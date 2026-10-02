@@ -12,5 +12,4 @@ public interface CardMeta {
     Rarity getRarity();
 
     JsonObject getData();
-
 }
