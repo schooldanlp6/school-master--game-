@@ -1,0 +1,34 @@
+{
+  "robert": {
+    "name": "Robert",
+    "description": "DER RoBeRt",
+    "rarity": "ELITE",
+    "stats": {
+      "ATTACK": 150,
+      "DEFENSE": 120,
+      "HP": 500
+    }
+  },
+  "blank": {
+    "name": "None",
+    "description": "Einfach nur ein test, obs klappt!",
+    "rarity": "BASIC"
+  },
+  "tafel": {
+    "name": "Tafel",
+    "description": "Läuft ohne Probleme - meistens - und wenn nicht, dann schlecht",
+    "rarity": "BASIC",
+    "equipment": [
+      {
+        "stat": "STRENGTH",
+        "modifier": "ADD",
+        "amount": 25.0
+      },
+      {
+        "stat": "SPEED",
+        "modifier": "SUBTRACT",
+        "amount": 5.0
+      }
+    ]
+  }
+}

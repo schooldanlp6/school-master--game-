@@ -16,8 +16,11 @@ public class CardInitiator {
         return new CardAPI(CardFile.init());
     }
 
-    public static File getAsset(Object o) {
-        return CardAssets.getAsset(o);
+    public static File getAsset(Object o,CardAssetType type) {
+        return CardAssets.getAsset(o,type);
+    }
+    public static File getAssetFromString(String path) {
+        return CardAssets.getAssetFromString(path);
     }
 
 }
