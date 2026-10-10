@@ -1,0 +1,20 @@
+{
+  "types": {
+    "picture": "png",
+    "sound": "mp3"
+  },
+  "groups": {
+    "professions": {
+      "types": ["picture"],
+      "source": { "enum": "CardAPI/src/main/java/de/adrian/utils/Profession.java" }
+    },
+    "rarity": {
+      "types": ["picture", "sound"],
+      "source": { "enum": "CardAPI/src/main/java/de/adrian/utils/Rarity.java" }
+    },
+    "cards": {
+      "types": ["picture"],
+      "source": { "cardMeta": "data/cards/CardMeta.json" }
+    }
+  }
+}
