@@ -1,6 +1,7 @@
 package de.adrian;
 
 import de.adrian.cardapi.CardInitiator;
+import de.adrian.game.setup.PluginDefsInitiator;
 
 import java.io.*;
 
@@ -12,6 +13,7 @@ public class App{
     public static void main(String[] args) {
         if (!folder.exists()) folder.mkdir();
         api = CardInitiator.init();
+        PluginDefsInitiator.init();
     }
 
 }
