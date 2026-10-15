@@ -26,20 +26,33 @@ public class Game {
     private static Map<Class<? extends GamePlugin>,GamePlugin> startPlugins(Game game) {
         Set<PluginDef> defs = PluginDefsInitiator.getDefs();
         Map<Class<? extends GamePlugin>,GamePlugin> plugins = new HashMap<>();
-        System.out.println("Starting Game-Plugins...");
+        System.out.println("Creating Game-Plugin instances...");
         for (var def : defs) {
             try {
                 GamePlugin plugin = def.main().getDeclaredConstructor().newInstance();
-                plugin.init(game);
+                System.out.println(" -> " + def.name() + "-" + def.version());
+                plugin.init(game,def);
                 plugins.put(def.main(),plugin);
-                System.out.println(def.name() + " has been started!");
+
             }catch (Exception ex) {
-                System.out.println("Couldnt start " + def.name());
+                System.out.println(" X Couldnt create instance of " + def.name() + "-" + def.version());
                 ex.printStackTrace();
             }
         }
 
+
         return plugins;
+    }
+    private static void enablePlugins(Game game) {
+        System.out.println("Enabling Game-Plugin instances....");
+        for (GamePlugin plugin : game.plugins.values()) {
+            try {
+                System.out.println(" -> " + plugin.getDef().name() + "-" + plugin.getDef().version());
+                plugin.onEnable();
+            } catch (Exception e) {
+                System.out.println(" X Couldnt enable " + plugin.getDef() + "-" + plugin.getDef().version());
+            }
+        }
     }
 
 
@@ -53,6 +66,7 @@ public class Game {
         this.uuid = uuid;
         plugins = startPlugins(this);
         eventManager = new EventManager();
+        enablePlugins(this);
     }
 
     protected GamePlugin getPlugin(Class<? extends GamePlugin> main) {
@@ -60,6 +74,9 @@ public class Game {
     }
     protected EventManager getEventManager() {
         return eventManager;
+    }
+    public UUID getID() {
+        return uuid;
     }
 
 
