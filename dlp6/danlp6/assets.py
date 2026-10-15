@@ -3,7 +3,8 @@
 
 Derives the expected asset tree from a single definitions file
 (assets.defs.json), which points at the real sources of truth (Java enums,
-CardMeta.json). Every path is <type>/<group>/<name>.<ext>, all lower-case.
+CardMeta.json, Game-Plugin jars). Every path is <type>/<group>/<name>.<ext>,
+all lower-case; plugin assets are <type>/plugins/<plugin>/<name>.<ext>.
 
 Usage: assets.py <command> [options]   (see --help; normally run via make)
 """
@@ -13,11 +14,13 @@ import json
 import re
 import shutil
 import sys
+import zipfile
 from pathlib import Path
 
 ENUM_RE = re.compile(r"\benum\s+\w+\s*\{(.*?)(?:;|\})", re.S)
 CONST_RE = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*(?:\(.*?\))?\s*$", re.S)
 INDEX_NAME = "index.json"
+PLUGIN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")  # same rule as PluginDefsInitiator
 
 
 # --- derivation -------------------------------------------------------------
@@ -40,12 +43,62 @@ def card_ids(meta_file: Path) -> list[str]:
     return list(json.loads(meta_file.read_text(encoding="utf-8")).keys())
 
 
+def plugin_assets(plugin_dir: Path, group: str, types: dict, wanted: list[str]) -> dict[str, tuple[Path, str]]:
+    """Map asset path -> (jar, entry) for every assets/<type>/<name>.<ext> shipped in a plugin jar.
+
+    Accepts the same jars as PluginDefsInitiator: plugin.json with string main/version/name, a
+    valid name, and on duplicate names (case-insensitive) the first jar in sorted order wins.
+    """
+    out = {}
+    seen = set()
+    for jar in sorted(plugin_dir.glob("*.jar")) if plugin_dir.is_dir() else []:
+        try:
+            with zipfile.ZipFile(jar) as z:
+                meta = json.loads(z.read("plugin.json"))
+                if not isinstance(meta, dict):
+                    raise ValueError("plugin.json is not a JSON object")
+                for key in ("main", "version", "name"):
+                    if not isinstance(meta.get(key), str):
+                        raise ValueError(f'plugin.json is missing "{key}" (must be a string)')
+                name = meta["name"]
+                if not PLUGIN_NAME_RE.match(name):
+                    raise ValueError(f"invalid plugin name '{name}'")
+                if name.lower() in seen:
+                    raise ValueError(f"a plugin named '{name}' is already loaded")
+                seen.add(name.lower())
+                for entry in z.namelist():
+                    parts = entry.split("/")
+                    if len(parts) != 3 or parts[0] != "assets" or parts[1] not in wanted or not parts[2]:
+                        continue
+                    t, file = parts[1], parts[2]
+                    stem, _, ext = file.rpartition(".")
+                    if ext.lower() != types[t] or not stem:
+                        print(f"warning: {jar.name}: skipping {entry} (expected .{types[t]})", file=sys.stderr)
+                        continue
+                    path = f"{t}/{group}/{name.lower()}/{stem.lower()}.{types[t]}"
+                    if path in out:
+                        print(f"warning: {jar.name}: {entry} and {out[path][1]} both map to {path}, keeping the first",
+                              file=sys.stderr)
+                        continue
+                    out[path] = (jar, entry)
+        except (KeyError, ValueError, zipfile.BadZipFile) as e:  # KeyError: no plugin.json in the jar
+            print(f"warning: skipping plugin {jar.name}: {e}", file=sys.stderr)
+    return out
+
+
 def derive(defs_file: Path, repo: Path) -> list[str]:
     defs = json.loads(defs_file.read_text(encoding="utf-8"))
     types = defs["types"]
     paths = []
     for group, spec in defs["groups"].items():
         src = spec["source"]
+        for t in spec["types"]:
+            if t not in types:
+                sys.exit(f"error: group '{group}' uses unknown type '{t}'")
+        if "pluginJars" in src:
+            # per plugin, only the files it actually ships (no type x name cross product)
+            paths += plugin_assets(repo / src["pluginJars"], group, types, spec["types"])
+            continue
         if "enum" in src:
             names = enum_values(repo / src["enum"])
         elif "cardMeta" in src:
@@ -55,8 +108,6 @@ def derive(defs_file: Path, repo: Path) -> list[str]:
         else:
             sys.exit(f"error: group '{group}' has no known source")
         for t in spec["types"]:
-            if t not in types:
-                sys.exit(f"error: group '{group}' uses unknown type '{t}'")
             paths += [f"{t}/{group}/{n.lower()}.{types[t]}" for n in names]
     return sorted(set(paths))
 
@@ -144,9 +195,10 @@ def cmd_gather(a):
         sys.exit("error: SRC=<dir> must point at a directory with source assets")
     copied = 0
     for p in read_manifest(a.manifest):
-        # exact relative path first, then <group>/<file> anywhere, then bare <file>
-        _, group, name = p.split("/")
-        cands = [a.src / p, *sorted(a.src.rglob(f"{group}/{name}")), *sorted(a.src.rglob(name))]
+        # exact relative path first, then <group>/[<plugin>/]<file> anywhere, then bare <file>
+        sub = p.split("/", 1)[1]
+        name = p.rsplit("/", 1)[1]
+        cands = [a.src / p, *sorted(a.src.rglob(sub)), *sorted(a.src.rglob(name))]
         hit = next((c for c in cands if c.is_file() and c.stat().st_size > 0), None)
         if not hit:
             continue
@@ -158,6 +210,28 @@ def cmd_gather(a):
         print(f"{hit} -> {dst}")
         copied += 1
     print(f"{copied} assets gathered from {a.src}")
+
+
+def cmd_plugins(a):
+    """Copy the assets shipped inside plugin jars into the root (the jar is their source of truth)."""
+    defs = json.loads(a.defs.read_text(encoding="utf-8"))
+    copied = found = 0
+    for group, spec in defs["groups"].items():
+        if "pluginJars" not in spec["source"]:
+            continue
+        for p, (jar, entry) in sorted(plugin_assets(a.repo / spec["source"]["pluginJars"], group,
+                                                    defs["types"], spec["types"]).items()):
+            found += 1
+            with zipfile.ZipFile(jar) as z:
+                data = z.read(entry)
+            dst = a.root / p
+            if dst.exists() and dst.read_bytes() == data:
+                continue
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(data)
+            print(f"{jar.name}!{entry} -> {dst}")
+            copied += 1
+    print(f"{copied} of {found} plugin assets updated")
 
 
 def cmd_index(a):
@@ -192,6 +266,7 @@ def main():
     p = sub.add_parser("gather", help="copy source assets into the root")
     p.add_argument("--src", type=Path)
     p.set_defaults(fn=cmd_gather)
+    sub.add_parser("plugins", help="extract assets shipped in plugin jars into the root").set_defaults(fn=cmd_plugins)
     sub.add_parser("index", help="write index.json (path, size, sha256) into the root").set_defaults(fn=cmd_index)
     a = ap.parse_args()
     a.fn(a)

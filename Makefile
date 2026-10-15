@@ -1,3 +1,4 @@
+# Author: danlp6
 # Asset housekeeping for the static assets server.
 # The asset root is a plain folder: point python -m http.server / nginx / Tomcat at it.
 
@@ -10,10 +11,10 @@ PORT       ?= 8080
 
 ASSETS := $(PYTHON) dlp6/danlp6/assets.py --defs $(ASSET_DEFS) --root $(ASSET_ROOT) --manifest $(MANIFEST)
 
-# Sources of truth the manifest is derived from
-DEF_SOURCES := $(ASSET_DEFS) data/cards/CardMeta.json $(wildcard CardAPI/src/main/java/de/adrian/utils/*.java)
+# Sources of truth the manifest is derived from (the plugins folder itself so removed jars count too)
+DEF_SOURCES := $(ASSET_DEFS) data/cards/CardMeta.json $(wildcard CardAPI/src/main/java/de/adrian/utils/*.java) $(wildcard data/plugins data/plugins/*.jar)
 
-.PHONY: help asset-paths asset-list asset-tree asset-check asset-clean asset-gather asset-index asset-update asset-serve
+.PHONY: help asset-paths asset-list asset-tree asset-check asset-clean asset-gather asset-plugins asset-index asset-update asset-serve
 
 help:
 	@echo "asset-paths   derive expected asset paths -> $(MANIFEST)"
@@ -22,8 +23,9 @@ help:
 	@echo "asset-check   diff expected vs. present (STRICT=1 fails on missing)"
 	@echo "asset-clean   remove orphans/empty dirs (dry run; FORCE=1, PRUNE_EMPTY=1)"
 	@echo "asset-gather  copy source assets in (SRC=<dir>)"
+	@echo "asset-plugins extract assets shipped in data/plugins/*.jar"
 	@echo "asset-index   write $(ASSET_ROOT)/index.json with sizes + sha256"
-	@echo "asset-update  paths -> clean -> tree -> index"
+	@echo "asset-update  paths -> clean -> tree -> plugins -> index"
 	@echo "asset-serve   serve $(ASSET_ROOT) on :$(PORT) for local dev"
 
 $(MANIFEST): $(DEF_SOURCES)
@@ -47,12 +49,16 @@ asset-clean: $(MANIFEST)
 asset-gather: $(MANIFEST)
 	@$(ASSETS) gather --src "$(SRC)"
 
+asset-plugins: $(MANIFEST)
+	@$(ASSETS) plugins
+
 asset-index: $(MANIFEST)
 	@$(ASSETS) index
 
 asset-update: asset-paths
 	@$(ASSETS) clean $(if $(FORCE),--force) $(if $(PRUNE_EMPTY),--prune-empty)
 	@$(ASSETS) tree $(if $(PLACEHOLDERS),--placeholders)
+	@$(ASSETS) plugins
 	@$(ASSETS) index
 
 asset-serve:

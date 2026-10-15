@@ -38,6 +38,7 @@ public final class AssetAdapter {
     public static final String PROFESSIONS = "professions";
     public static final String RARITY = "rarity";
     public static final String CARDS = "cards";
+    public static final String PLUGINS = "plugins";
 
     public static final String ENV_BASE_URLS = "ASSET_BASE_URLS";
     public static final String DEFAULT_BASE_URL = "http://localhost:8080/";
@@ -69,6 +70,10 @@ public final class AssetAdapter {
     }
     public static String path(Identifier card, Type type) {
         return path(CARDS, card.value(), type);
+    }
+    /** {@code <type>/plugins/<plugin>/<name>.<ext>}, for assets a Game-Plugin ships in its jar. */
+    public static String pluginPath(String plugin, String name, Type type) {
+        return path(PLUGINS + "/" + plugin.toLowerCase(Locale.ROOT), name, type);
     }
 
     // --- URLs ---

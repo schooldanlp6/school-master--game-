@@ -1,4 +1,5 @@
 {
+  "_author": "danlp6",
   "types": {
     "picture": "png",
     "sound": "mp3"
@@ -15,6 +16,10 @@
     "cards": {
       "types": ["picture"],
       "source": { "cardMeta": "data/cards/CardMeta.json" }
+    },
+    "plugins": {
+      "types": ["picture", "sound"],
+      "source": { "pluginJars": "data/plugins" }
     }
   }
 }

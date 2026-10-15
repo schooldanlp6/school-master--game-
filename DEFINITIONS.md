@@ -1,3 +1,4 @@
+<!-- Author: danlp6 -->
 # Asset definitions
 
 How assets are defined, derived, served and used in the code.
@@ -22,12 +23,13 @@ data/cards/assets.defs.json   ← what asset groups exist and which types they h
         │  points at
         ├── CardAPI/.../utils/Profession.java   (enum constants → file names)
         ├── CardAPI/.../utils/Rarity.java       (enum constants → file names)
-        └── data/cards/CardMeta.json             (card ids → file names)
+        ├── data/cards/CardMeta.json             (card ids → file names)
+        └── data/plugins/*.jar                   (assets/<type>/* inside each Game-Plugin jar)
         │
         ▼  make asset-paths   (dlp6/danlp6/assets.py)
 data/cards/assets.manifest    ← every expected path, one per line (generated, gitignored)
         │
-        ▼  make asset-tree / asset-gather / asset-clean / asset-index
+        ▼  make asset-tree / asset-gather / asset-plugins / asset-clean / asset-index
 data/cards/assets/            ← the folder you deploy / point the server at
         └── index.json        ← path → size + sha256 (generated, gitignored)
 ```
@@ -54,6 +56,7 @@ data/cards/assets/            ← the folder you deploy / point the server at
 | `.source.enum`   | Java file; the names are the enum constants.                               |
 | `.source.cardMeta` | JSON file; the names are its top-level keys (card ids).                  |
 | `.source.names`  | A literal list of names, for groups that don't come from code.             |
+| `.source.pluginJars` | Folder of Game-Plugin jars; the names are the files each jar ships (see below). |
 
 ### Path rule
 
@@ -62,6 +65,7 @@ data/cards/assets/            ← the folder you deploy / point the server at
 picture/rarity/elite.png
 sound/rarity/elite.mp3
 picture/cards/robert.png
+picture/plugins/<plugin>/<name>.png   (Game-Plugin assets, one folder deeper)
 ```
 
 All lower-case, because nginx, Tomcat and most CDNs treat paths as case-sensitive.
@@ -74,6 +78,7 @@ All lower-case, because nginx, Tomcat and most CDNs treat paths as case-sensitiv
 | a card in `CardMeta.json`        | Same as above.                                                    |
 | a new group (e.g. `stats`)       | Add it to `assets.defs.json`, add a constant + `path(...)` overload to `AssetAdapter`. |
 | a new type (e.g. `video`)        | Add it to `types` in the defs **and** to `AssetAdapter.Type`.     |
+| a Game-Plugin with assets        | Drop the jar in `data/plugins/`, run `make asset-update`.          |
 
 Then:
 
@@ -126,6 +131,50 @@ Rules:
 4. **Cache by `index.json`.** Clients can fetch `index.json`, compare the `sha256` with their
    cache, and only download what changed. The hash also works as a cache-busting query
    parameter (`?v=<sha256>`) if the CDN caches aggressively.
+
+## Game-Plugin assets
+
+Game-Plugins (`data/plugins/*.jar`, loaded by `PluginDefsInitiator`) bring their own assets
+inside the jar. The jar is their source of truth, so they need no defs entry of their own:
+
+```
+demo.jar
+├── plugin.json            {"main": "com.example.demo.DemoPlugin", "version": "1.0", "name": "Demo"}  (all strings)
+├── com/example/demo/…
+└── assets/
+    ├── picture/icon.png   → picture/plugins/demo/icon.png
+    └── sound/win.mp3      → sound/plugins/demo/win.mp3
+```
+
+- Only `assets/<type>/<name>.<ext>` is picked up (flat, no subfolders). The extension must
+  match the type from the defs; anything else is skipped with a warning.
+- Unlike the enum/card groups, a plugin only gets the paths for files it actually ships, not
+  every type × name combination.
+- The plugin `name` becomes the folder (lower-cased). It must start with `A-Z a-z 0-9` and may
+  only contain `A-Z a-z 0-9 _ . -`. The server and `assets.py` both skip jars with an invalid
+  `plugin.json` or a name that's already taken (case-insensitive; the first jar by file name
+  wins), so they always agree on which plugins exist.
+- Two files that differ only in case (`Icon.png`, `icon.png`) map to the same path; the first
+  is kept and a warning is printed.
+- `make asset-plugins` (also part of `asset-update`) copies the files out of the jars. It
+  overwrites changed files, so a jar always wins over anything copied in with `asset-gather`.
+- When a jar is removed, its paths drop out of the manifest on the next `make` run and
+  `asset-clean` lists them as orphans.
+
+In plugin code:
+
+```java
+public class DemoPlugin extends GamePlugin {
+    @Override protected void onEnable() {
+        registerEvents(new DemoListener());
+        String icon = assetPath("icon", AssetAdapter.Type.PICTURE);   // picture/plugins/demo/icon.png
+    }
+    @Override protected void onDisable() { }
+}
+```
+
+`assetPath(...)` is the same as `AssetAdapter.pluginPath(getDef().name(), name, type)`. As with
+every other asset, send the path to clients and let them resolve it against their mirrors.
 
 ## Relation to the existing server code
 

@@ -1,3 +1,4 @@
+<!-- Modified by danlp6: assets server, Makefile, Game-Plugins -->
 # school-master--game-
 
 A card game built around school life. The project is a Maven multi-module setup:
@@ -5,8 +6,8 @@ A card game built around school life. The project is a Maven multi-module setup:
 | Module    | Purpose                                                                                     |
 |-----------|---------------------------------------------------------------------------------------------|
 | `CardAPI` | Card model and parser: reads `CardMeta.json` into `BattleCardMeta` / `EquipmentCardMeta`.     |
-| `Server`  | Bootstraps the `data/` folder, loads the card metadata, and creates the asset folder tree.     |
-| `data/`   | Runtime data: card definitions (`data/cards/CardMeta.json`) and the asset tree.               |
+| `Server`  | Bootstraps the `data/` folder, loads the card metadata and the Game-Plugins, and runs games.  |
+| `data/`   | Runtime data: card definitions (`data/cards/CardMeta.json`), `plugins/*.jar` and the asset tree. |
 
 ## Assets server
 
@@ -35,6 +36,7 @@ data/cards/assets/
 │   ├── cards/               # one per card id in CardMeta.json
 │   │   ├── robert.png
 │   │   └── …
+│   ├── plugins/<plugin>/    # whatever each Game-Plugin jar ships in assets/picture/
 │   ├── professions/         # one per Profession enum value
 │   │   ├── sport.png
 │   │   ├── wissenschaften.png
@@ -55,8 +57,8 @@ data/cards/assets/
 e.g. `GET /assets/picture/rarity/elite.png`
 
 The tree is **derived**, never hand-made: `data/cards/assets.defs.json` lists the asset
-groups and their types and points at the sources of truth (the `Profession`/`Rarity` enums
-and `CardMeta.json`). See [DEFINITIONS.md](DEFINITIONS.md) for the full definition format
+groups and their types and points at the sources of truth (the `Profession`/`Rarity` enums,
+`CardMeta.json` and the Game-Plugin jars). See [DEFINITIONS.md](DEFINITIONS.md) for the full definition format
 and how to use `AssetAdapter` in code.
 
 ### Asset housekeeping (Makefile)
@@ -72,13 +74,14 @@ call `dlp6/danlp6/assets.py` (Python 3, stdlib only):
 | `make asset-tree`   | **Create the structure.** Creates every folder from the manifest; `PLACEHOLDERS=1` also creates empty files. |
 | `make asset-check`  | Reports **missing**, **placeholder** (empty) and **orphan** (not in the manifest) files. `STRICT=1` exits non-zero for CI. |
 | `make asset-clean`  | **Clean.** Removes orphans and empty folders. Dry run unless `FORCE=1`; `PRUNE_EMPTY=1` also drops placeholders. |
+| `make asset-plugins` | Extracts the assets shipped in `data/plugins/*.jar` (`assets/<type>/<name>.<ext>`) into `<type>/plugins/<plugin>/`. |
 | `make asset-index`  | Writes `index.json` (size + sha256 per asset) into the root, for client caches and mirrors. |
-| `make asset-update` | **Update.** `paths` → `clean` → `tree` → `index`, so the tree matches the code again.                      |
+| `make asset-update` | **Update.** `paths` → `clean` → `tree` → `plugins` → `index`, so the tree matches the code again.          |
 | `make asset-serve`  | Serves the root with `python3 -m http.server` on `PORT` (default 8080).                                  |
 
 Overridable: `ASSET_ROOT`, `ASSET_DEFS`, `MANIFEST`, `PYTHON`, `PORT`.
 
-Typical workflow after adding a new `Rarity`, `Profession` or card:
+Typical workflow after adding a new `Rarity`, `Profession`, card or plugin jar:
 
 ```sh
 make asset-update              # derive, show orphans, create folders, write index.json
@@ -87,7 +90,28 @@ make asset-check               # what's still missing
 make asset-clean FORCE=1       # actually drop the orphans
 ```
 
-Deploying is just copying (or `rsync`ing) `data/cards/assets/` to every mirror or CDN origin.
+## Game-Plugins
+
+Game logic is extended with plugin jars in `data/plugins/`. Each jar has a `plugin.json`
+(`main`, `version`, `name`, all strings), and its main class extends `de.adrian.game.GamePlugin`:
+
+```java
+public class DemoPlugin extends GamePlugin {
+    @Override protected void onEnable()  { registerEvents(new DemoListener()); }
+    @Override protected void onDisable() { }
+}
+
+class DemoListener implements Listener {
+    @EventHandler void onTimer(TimerEvent e) { /* … */ }   // handlers may also take a super type, e.g. Event
+}
+```
+
+Every `Game` gets fresh instances of all plugins. All of them are created first, then
+`onEnable()` runs on each, so `getPlugin(Other.class)` already works in `onEnable()`.
+`Game.stop()` calls `onDisable()`. Plugins can ship their own pictures and sounds; see
+[DEFINITIONS.md](DEFINITIONS.md#game-plugin-assets).
+
+Deploying the assets is just copying (or `rsync`ing) `data/cards/assets/` to every mirror or CDN origin.
 
 > **Note:** `CardAssets.createFile` currently writes **lower-case** file names
 > (`elite.png`), while `ProfessionAsset/RarityAsset.getAsset` look them up with
