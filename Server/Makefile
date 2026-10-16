@@ -1,18 +1,18 @@
 # Author: danlp6
-# Asset housekeeping for the static assets server.
-# The asset root is a plain folder: point python -m http.server / nginx / Tomcat at it.
+# Server housekeeping. Run from Server/ or with `make -C Server <target>`.
+# Assets/ is a plain folder (the CDN root): point python -m http.server / nginx / Tomcat at it.
 
 PYTHON     ?= python3
-ASSET_ROOT ?= data/cards/assets
-ASSET_DEFS ?= data/cards/assets.defs.json
-MANIFEST   ?= data/cards/assets.manifest
+ASSET_ROOT ?= Assets
+ASSET_DEFS ?= assets.defs.json
+MANIFEST   ?= assets.manifest
 SRC        ?=
 PORT       ?= 8080
 
-ASSETS := $(PYTHON) dlp6/danlp6/assets.py --defs $(ASSET_DEFS) --root $(ASSET_ROOT) --manifest $(MANIFEST)
+ASSETS := $(PYTHON) assets.py --repo . --defs $(ASSET_DEFS) --root $(ASSET_ROOT) --manifest $(MANIFEST)
 
-# Sources of truth the manifest is derived from (the plugins folder itself so removed jars count too)
-DEF_SOURCES := $(ASSET_DEFS) data/cards/CardMeta.json $(wildcard CardAPI/src/main/java/de/adrian/utils/*.java) $(wildcard data/plugins data/plugins/*.jar)
+# Everything the manifest is derived from, read from the defs (enum files, CardMeta.json, plugin jars + their folder)
+DEF_SOURCES := $(shell $(ASSETS) sources)
 
 .PHONY: help asset-paths asset-list asset-tree asset-check asset-clean asset-gather asset-plugins asset-index asset-update asset-serve
 
@@ -23,7 +23,7 @@ help:
 	@echo "asset-check   diff expected vs. present (STRICT=1 fails on missing)"
 	@echo "asset-clean   remove orphans/empty dirs (dry run; FORCE=1, PRUNE_EMPTY=1)"
 	@echo "asset-gather  copy source assets in (SRC=<dir>)"
-	@echo "asset-plugins extract assets shipped in data/plugins/*.jar"
+	@echo "asset-plugins extract assets shipped in Backend/data/plugins/*.jar"
 	@echo "asset-index   write $(ASSET_ROOT)/index.json with sizes + sha256"
 	@echo "asset-update  paths -> clean -> tree -> plugins -> index"
 	@echo "asset-serve   serve $(ASSET_ROOT) on :$(PORT) for local dev"

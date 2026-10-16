@@ -7,19 +7,19 @@
   "groups": {
     "professions": {
       "types": ["picture"],
-      "source": { "enum": "CardAPI/src/main/java/de/adrian/utils/Profession.java" }
+      "source": { "enum": "Backend/CardAPI/src/main/java/de/adrian/utils/Profession.java" }
     },
     "rarity": {
       "types": ["picture", "sound"],
-      "source": { "enum": "CardAPI/src/main/java/de/adrian/utils/Rarity.java" }
+      "source": { "enum": "Backend/CardAPI/src/main/java/de/adrian/utils/Rarity.java" }
     },
     "cards": {
       "types": ["picture"],
-      "source": { "cardMeta": "data/cards/CardMeta.json" }
+      "source": { "cardMeta": "Backend/data/cards/CardMeta.json" }
     },
     "plugins": {
       "types": ["picture", "sound"],
-      "source": { "pluginJars": "data/plugins" }
+      "source": { "pluginJars": "Backend/data/plugins" }
     }
   }
 }

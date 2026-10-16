@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Asset housekeeping for the static assets server.
+# Author: danlp6
+"""Asset housekeeping for the static assets server (Server/Assets).
 
 Derives the expected asset tree from a single definitions file
 (assets.defs.json), which points at the real sources of truth (Java enums,
 CardMeta.json, Game-Plugin jars). Every path is <type>/<group>/<name>.<ext>,
 all lower-case; plugin assets are <type>/plugins/<plugin>/<name>.<ext>.
 
+Every name must match [a-z0-9][a-z0-9_.-]* after lower-casing, so paths are
+URL safe without encoding (see API.md).
+
 Usage: assets.py <command> [options]   (see --help; normally run via make)
+All default paths are relative to this script's folder (Server/).
 """
 import argparse
 import hashlib
@@ -21,6 +26,8 @@ ENUM_RE = re.compile(r"\benum\s+\w+\s*\{(.*?)(?:;|\})", re.S)
 CONST_RE = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*(?:\(.*?\))?\s*$", re.S)
 INDEX_NAME = "index.json"
 PLUGIN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")  # same rule as PluginDefsInitiator
+SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")  # one lower-cased path segment, see API.md
+HERE = Path(__file__).resolve().parent
 
 
 # --- derivation -------------------------------------------------------------
@@ -75,6 +82,10 @@ def plugin_assets(plugin_dir: Path, group: str, types: dict, wanted: list[str]) 
                     if ext.lower() != types[t] or not stem:
                         print(f"warning: {jar.name}: skipping {entry} (expected .{types[t]})", file=sys.stderr)
                         continue
+                    if not SEGMENT_RE.match(stem.lower()):
+                        print(f"warning: {jar.name}: skipping {entry} (name must match {SEGMENT_RE.pattern})",
+                              file=sys.stderr)
+                        continue
                     path = f"{t}/{group}/{name.lower()}/{stem.lower()}.{types[t]}"
                     if path in out:
                         print(f"warning: {jar.name}: {entry} and {out[path][1]} both map to {path}, keeping the first",
@@ -107,9 +118,28 @@ def derive(defs_file: Path, repo: Path) -> list[str]:
             names = src["names"]
         else:
             sys.exit(f"error: group '{group}' has no known source")
+        for n in names:
+            if not SEGMENT_RE.match(n.lower()):
+                sys.exit(f"error: group '{group}': name '{n}' must match {SEGMENT_RE.pattern} after lower-casing")
         for t in spec["types"]:
             paths += [f"{t}/{group}/{n.lower()}.{types[t]}" for n in names]
     return sorted(set(paths))
+
+
+def sources(defs_file: Path, repo: Path) -> list[Path]:
+    """Every file/folder the manifest is derived from (for make prerequisites)."""
+    defs = json.loads(defs_file.read_text(encoding="utf-8"))
+    out = [defs_file]
+    for spec in defs["groups"].values():
+        src = spec["source"]
+        for key in ("enum", "cardMeta"):
+            if key in src:
+                out.append(repo / src[key])
+        if "pluginJars" in src:
+            d = repo / src["pluginJars"]
+            if d.is_dir():  # the folder too: its mtime changes when a jar is removed
+                out += [d, *sorted(d.glob("*.jar"))]
+    return out
 
 
 # --- helpers ----------------------------------------------------------------
@@ -123,8 +153,9 @@ def read_manifest(manifest: Path) -> list[str]:
 def actual(root: Path) -> list[str]:
     if not root.exists():
         return []
+    # dotfiles (.gitkeep, ...) are never assets, see SEGMENT_RE
     return sorted(str(p.relative_to(root)) for p in root.rglob("*")
-                  if p.is_file() and p.name != INDEX_NAME)
+                  if p.is_file() and p.name != INDEX_NAME and not p.name.startswith("."))
 
 
 def dirs_deepest_first(root: Path) -> list[Path]:
@@ -138,6 +169,10 @@ def cmd_paths(a):
     paths = derive(a.defs, a.repo)
     a.manifest.write_text("\n".join(paths) + "\n")
     print(f"{len(paths)} asset paths -> {a.manifest}")
+
+
+def cmd_sources(a):
+    print(" ".join(str(p) for p in sources(a.defs, a.repo)))
 
 
 def cmd_list(a):
@@ -246,12 +281,13 @@ def cmd_index(a):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--repo", type=Path, default=Path("."))
-    ap.add_argument("--defs", type=Path, default=Path("data/cards/assets.defs.json"))
-    ap.add_argument("--root", type=Path, default=Path("data/cards/assets"))
-    ap.add_argument("--manifest", type=Path, default=Path("data/cards/assets.manifest"))
+    ap.add_argument("--repo", type=Path, default=HERE, help="base for paths in the defs (default: Server/)")
+    ap.add_argument("--defs", type=Path, help="default: <repo>/assets.defs.json")
+    ap.add_argument("--root", type=Path, help="asset root to serve, default: <repo>/Assets")
+    ap.add_argument("--manifest", type=Path, help="default: <repo>/assets.manifest")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("paths", help="derive expected paths into the manifest").set_defaults(fn=cmd_paths)
+    sub.add_parser("sources", help="print the files the manifest is derived from").set_defaults(fn=cmd_sources)
     sub.add_parser("list", help="list files present under the root").set_defaults(fn=cmd_list)
     p = sub.add_parser("tree", help="create folders from the manifest")
     p.add_argument("--placeholders", action="store_true")
@@ -269,6 +305,9 @@ def main():
     sub.add_parser("plugins", help="extract assets shipped in plugin jars into the root").set_defaults(fn=cmd_plugins)
     sub.add_parser("index", help="write index.json (path, size, sha256) into the root").set_defaults(fn=cmd_index)
     a = ap.parse_args()
+    a.defs = a.defs or a.repo / "assets.defs.json"
+    a.root = a.root or a.repo / "Assets"
+    a.manifest = a.manifest or a.repo / "assets.manifest"
     a.fn(a)
 
 
