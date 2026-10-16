@@ -12,7 +12,11 @@ public class EventManager {
 
             @SuppressWarnings("unchecked")
             Class<? extends Event> eventClass = (Class<? extends Event>) type;
-            ListenerDef regListener = new ListenerDef(listener, method);
+
+            EventHandler annotation = method.getAnnotation(EventHandler.class);
+            boolean ignoreCanceled = annotation.ignoreCanceled();
+
+            ListenerDef regListener = new ListenerDef(listener, method,ignoreCanceled);
             listeners.computeIfAbsent(eventClass, k -> new ArrayList<>()).add(regListener);
         }
     }
@@ -25,10 +29,13 @@ public class EventManager {
         List<ListenerDef> eventListeners = listeners.get(event.getClass());
         if (eventListeners == null) return;
 
-        for (ListenerDef regListener : eventListeners) try {
+        for (ListenerDef regListener : eventListeners) {
+            if (event instanceof CancelableEvent e && e.isCanceled() && regListener .ignoreCanceled()) continue;
+            try {
                 regListener.method().invoke(regListener.listener(), event);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
     }
 }
