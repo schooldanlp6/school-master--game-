@@ -1,5 +1,5 @@
 <!-- Modified by danlp6: project structure, Server/Client split, assets CDN, Makefile, Game-Plugins -->
-# school-master--game-
+# SMG WaoW
 
 A card game built around school life. This repo is the project root for the **Server** and the
 **Client**. They're separate projects that share no code or build; they only talk over the
