@@ -1,4 +1,4 @@
-// Modified by danlp6: EventManager before plugins, onEnable/onDisable lifecycle, stop(), getGame()
+// Modified by danlp6: EventManager before plugins, onEnable/onDisable lifecycle, stop(), getGame(); merged with Server branch
 package de.adrian.game;
 
 import de.adrian.game.listeners.EventManager;
@@ -32,13 +32,15 @@ public class Game {
     private static Map<Class<? extends GamePlugin>,GamePlugin> createPlugins(Game game) {
         Set<PluginDef> defs = PluginDefsInitiator.getDefs();
         Map<Class<? extends GamePlugin>,GamePlugin> plugins = new LinkedHashMap<>();
+        System.out.println("Creating Game-Plugin instances...");
         for (var def : defs) {
             try {
                 GamePlugin plugin = def.main().getDeclaredConstructor().newInstance();
+                System.out.println(" -> " + def.name() + "-" + def.version());
                 plugin.init(game, def);
                 plugins.put(def.main(),plugin);
             }catch (Exception | LinkageError ex) {
-                System.out.println("Couldnt create " + def.name());
+                System.out.println(" X Couldnt create instance of " + def.name() + "-" + def.version());
                 ex.printStackTrace();
             }
         }
@@ -64,15 +66,15 @@ public class Game {
 
     // All plugins exist before the first onEnable(), so getPlugin() works inside onEnable().
     private void enablePlugins() {
-        System.out.println("Starting Game-Plugins...");
+        System.out.println("Enabling Game-Plugin instances....");
         var it = plugins.values().iterator();
         while (it.hasNext()) {
             GamePlugin plugin = it.next();
             try {
+                System.out.println(" -> " + plugin.getDef().name() + "-" + plugin.getDef().version());
                 plugin.onEnable();
-                System.out.println(plugin.getDef().name() + " has been started!");
             } catch (Exception | LinkageError ex) {
-                System.out.println("Couldnt start " + plugin.getDef().name());
+                System.out.println(" X Couldnt enable " + plugin.getDef().name() + "-" + plugin.getDef().version());
                 ex.printStackTrace();
                 it.remove();
             }
@@ -92,7 +94,7 @@ public class Game {
         }
     }
 
-    public UUID getUuid() {
+    public UUID getID() {
         return uuid;
     }
     protected GamePlugin getPlugin(Class<? extends GamePlugin> main) {

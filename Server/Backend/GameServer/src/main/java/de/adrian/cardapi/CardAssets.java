@@ -7,7 +7,6 @@ import de.adrian.utils.Rarity;
 import java.io.File;
 import java.io.IOException;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 
 class CardAssets {

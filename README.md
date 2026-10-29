@@ -52,7 +52,7 @@ public class DemoPlugin extends GamePlugin {
 }
 
 class DemoListener implements Listener {
-    @EventHandler void onTimer(TimerEvent e) { /* … */ }   // handlers may also take a super type, e.g. Event
+    @EventHandler void onPacket(C2SPacketEvent e) { /* … */ }   // handlers may also take a super type, e.g. Event
 }
 ```
 
