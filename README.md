@@ -58,7 +58,12 @@ class DemoListener implements Listener {
 
 Every `Game` gets fresh instances of all plugins. All of them are created first, then
 `onEnable()` runs on each, so `getPlugin(Other.class)` already works in `onEnable()`.
-`Game.stop()` calls `onDisable()`. Plugins can ship their own pictures and sounds; see
+`Game.stop()` calls `onDisable()`.
+
+Handlers run in registration order, and inside one listener in method-name order. Events
+that implement `CancelableEvent` (e.g. `C2SPacketEvent`) can be cancelled with
+`setCanceled(true)`. After that, later handlers are skipped unless they are annotated
+`@EventHandler(ignoreCanceled = false)`. Plugins can ship their own pictures and sounds; see
 [Server/DEFINITIONS.md](Server/DEFINITIONS.md#game-plugin-assets).
 
 ### Assets CDN
@@ -125,3 +130,38 @@ network layer. The asset side exists already. See [Client/README.md](Client/READ
 ```sh
 mvn -f Client/pom.xml package
 ```
+
+## TODO
+
+### Backend
+- [ ] **Network layer.** Build the Backend ↔ Client connection from
+      [API.md](API.md#2-backend--client-game-api) (WebSocket is the proposal) and confirm the message
+      format; that section is still a draft.
+- [ ] **Turn client inputs into events.** Nothing creates a `C2SPacketEvent` yet. The network layer
+      should fire one per `input` message, so plugins can react to it or cancel it.
+- [ ] **Start and stop games.** `App.main` only loads cards and plugins; nothing calls
+      `Game.startGame(...)` or `Game.stop()` yet (lobby/matchmaking, when a game ends).
+- [ ] **Game rules.** There are no Game-Plugins yet, so a started game does nothing.
+- [ ] **Send the mirror list to the client** (`welcome.assets.baseUrls`), so the client needs only
+      the backend address.
+- [ ] **Old asset code.** Decide whether to delete `CardAssets`, `AssetElement`, `CardAssetType`,
+      `ProfessionAsset` and `RarityAsset`. They're redundant and have a casing bug; see
+      [Server/DEFINITIONS.md](Server/DEFINITIONS.md#old-backend-asset-code).
+- [ ] `CardMetaType` (from the Server branch) isn't used anywhere yet.
+- [ ] Event handlers declared in a listener's *superclass* aren't registered (only the listener
+      class's own methods are). Fine for now; decide whether that should work.
+
+### Client
+- [ ] **Game connection:** connect to the backend, send `hello`/`input`, render `state`, show `error`.
+      Only the asset cache (`AssetClient`) and its command line exist so far.
+- [ ] **UI:** rendering and input handling. Pick the toolkit.
+
+### Build & repo
+- [ ] **Check the Maven builds.** The `mvn` commands above haven't been run yet: the code was only
+      compiled with `javac` on JDK 21, while the poms target Java 26. `CardAPI` probably has to be
+      installed (`mvn install`) before `GameServer` can find it.
+- [ ] **Tests.** There are no automated tests (`src/test`). The checks done so far were one-off.
+- [ ] `GameServer`'s Maven artifactId is still `Server` (from before the folder was renamed).
+- [ ] The backend must run with `Server/Backend` as its working directory (`App` reads `data/`
+      relative to it). Make the path configurable, or document a start script.
+- [ ] `dlp6/` at the repo root only holds old `__pycache__` files and can probably be deleted.
