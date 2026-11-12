@@ -1,3 +1,4 @@
+// Modified by danlp6: clazz final (enum constants are global, nobody may reassign it)
 package de.adrian.utils;
 
 import de.adrian.interfaces.BattleCardMeta;
@@ -15,6 +16,6 @@ public enum CardMetaType {
         this.clazz = clazz;
     }
 
-    public Class<? extends CardMeta> clazz;
+    public final Class<? extends CardMeta> clazz;
 
 }
