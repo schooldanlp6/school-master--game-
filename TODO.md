@@ -1,0 +1,2 @@
+- fix docs
+- make proper todos
