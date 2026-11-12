@@ -120,6 +120,10 @@ Deploying the assets is copying `Server/Assets/` to every mirror, with `index.js
 (see [API.md](API.md#deploying-server-side)). The definition format and the rules for backend
 code are in [Server/DEFINITIONS.md](Server/DEFINITIONS.md).
 
+### Interactive and drawable excalidraw canvas
+![interactive image](Designmap.png)
+https://excalidraw.com/#room=917fc1020fee1dc8a1ac,xB28l1HQV6lsShaT3IQX9A
+
 ## Client
 
 A dynamic, stateless client: it sends the player's inputs to the backend and renders whatever
